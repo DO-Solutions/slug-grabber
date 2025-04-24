@@ -2,7 +2,7 @@
 
 A Node.js application that automatically provisions DigitalOcean Droplets when they become available. This application periodically checks for available resources and creates Droplets up to your specified count.
 
-[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/DO-Solutions/slug-grabber)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/DO-Solutions/slug-grabber/tree/main)
 
 - [DigitalOcean Slug Grabber](#digitalocean-slug-grabber)
   - [Cheat Sheet](#cheat-sheet)

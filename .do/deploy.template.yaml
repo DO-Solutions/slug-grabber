@@ -3,7 +3,7 @@ spec:
   services:
   - name: do-slug-grabber
     dockerfile_path: Dockerfile
-    github:
+    git:
       branch: main
       repo_clone_url: https://github.com/DO-Solutions/slug-grabber.git
     envs:
