@@ -9,6 +9,7 @@ A Node.js application that automatically provisions DigitalOcean Droplets when t
   - [Features](#features)
   - [Prerequisites](#prerequisites)
   - [Installation and Usage](#installation-and-usage)
+    - [Deploy to DigitalOcean App Platform as a Worker](#deploy-to-digitalocean-app-platform-as-a-worker)
     - [Using Docker](#using-docker)
     - [Using Node.js Directly](#using-nodejs-directly)
   - [Configuration Options](#configuration-options)
@@ -41,7 +42,49 @@ A Node.js application that automatically provisions DigitalOcean Droplets when t
 
 ## Installation and Usage
 
+### Deploy to DigitalOcean App Platform as a Worker
+
+```yaml
+spec:
+  name: do-slug-grabber
+  region: lon
+  workers:
+  - dockerfile_path: /Dockerfile
+    envs:
+    - key: DO_API_TOKEN
+      scope: RUN_TIME
+      type: SECRET
+      value: 
+    - key: SLUG
+      scope: RUN_TIME
+      value: s-1vcpu-1gb
+    - key: REGION
+      scope: RUN_TIME
+      value: tor1
+    - key: IMAGE
+      scope: RUN_TIME
+      value: debian-12-x64
+    - key: DESIRED_COUNT
+      scope: RUN_TIME
+      value: "1"
+    - key: SSH_KEYS
+      scope: RUN_TIME
+      value: "<id>" # doctl compute ssh-key list
+    - key: WEBHOOK_URL
+      scope: RUN_TIME
+      value: https://webhook.site/<your-webhook-id>
+    git:
+      branch: main
+      deploy_on_push: true
+      repo_clone_url: https://github.com/DO-Solutions/slug-grabber.git
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    name: slug-grabber
+    source_dir: /
+```
+
 ### Using Docker
+<details>
 
 1. Build the Docker image:
    ```bash
@@ -62,7 +105,11 @@ A Node.js application that automatically provisions DigitalOcean Droplets when t
      do-grabber
    ```
 
+</details>
+
 ### Using Node.js Directly
+
+<details>
 
 1. Clone the repository:
    ```bash
@@ -96,6 +143,8 @@ A Node.js application that automatically provisions DigitalOcean Droplets when t
      --webhook_url="https://your-webhook-url"
    ```
 
+</details>
+
 ## Configuration Options
 
 | Parameter | Description | Example |
@@ -112,7 +161,7 @@ A Node.js application that automatically provisions DigitalOcean Droplets when t
 When a Droplet is successfully created, the application will send a webhook notification to the specified URL. The notification is a JSON payload with the following structure:
 
 ### For individual Droplet creation:
-
+<details>
 ```json
 {
   "event": "droplet_created",
@@ -132,9 +181,9 @@ When a Droplet is successfully created, the application will send a webhook noti
   }
 }
 ```
-
+</details>
 ### For multiple Droplets creation summary:
-
+<details>
 ```json
 {
   "event": "droplets_created_summary",
@@ -149,9 +198,9 @@ When a Droplet is successfully created, the application will send a webhook noti
   }
 }
 ```
-
+</details>
 ### Expected console output
-
+<details>
 ```bash
 DigitalOcean Slug Grabber started
 Configuration: slug=s-1vcpu-1gb, region=tor1, image=debian-12-x64, desired_count=1
@@ -167,7 +216,7 @@ Checking for s-1vcpu-1gb droplets in tor1...
 Found 1 existing s-1vcpu-1gb droplets. Desired count: 1
 No new droplets needed. Current count: 1, desired: 1
 ```
-
+</details>
 You can use these webhooks to integrate with services like Slack, Discord, or your own applications.
 
 ## GPU Resources Cheat Sheet
