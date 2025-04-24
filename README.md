@@ -84,6 +84,7 @@ spec:
 ```
 
 ### Using Docker
+
 <details>
 
 1. Build the Docker image:
@@ -161,7 +162,9 @@ spec:
 When a Droplet is successfully created, the application will send a webhook notification to the specified URL. The notification is a JSON payload with the following structure:
 
 ### For individual Droplet creation:
+
 <details>
+
 ```json
 {
   "event": "droplet_created",
@@ -181,9 +184,13 @@ When a Droplet is successfully created, the application will send a webhook noti
   }
 }
 ```
+
 </details>
+
 ### For multiple Droplets creation summary:
+
 <details>
+
 ```json
 {
   "event": "droplets_created_summary",
@@ -199,8 +206,11 @@ When a Droplet is successfully created, the application will send a webhook noti
 }
 ```
 </details>
+
 ### Expected console output
+
 <details>
+
 ```bash
 DigitalOcean Slug Grabber started
 Configuration: slug=s-1vcpu-1gb, region=tor1, image=debian-12-x64, desired_count=1
@@ -217,6 +227,7 @@ Found 1 existing s-1vcpu-1gb droplets. Desired count: 1
 No new droplets needed. Current count: 1, desired: 1
 ```
 </details>
+
 You can use these webhooks to integrate with services like Slack, Discord, or your own applications.
 
 ## GPU Resources Cheat Sheet
