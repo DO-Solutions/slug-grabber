@@ -17,9 +17,9 @@ ENV NODE_ENV=production
 # Default values for arguments (can be overridden at runtime)
 # For a complete list of all DigitalOcean slugs, see: https://slugs.do-api.dev/
 ENV DO_API_TOKEN=""
-ENV SLUG="gpu-h100x8-640gb"
-ENV REGION="tor1"
-ENV IMAGE="gpu-h100x8-base"
+ENV SLUG=""
+ENV REGION=""
+ENV IMAGE=""
 ENV DESIRED_COUNT="1"
 ENV SSH_KEYS=""
 ENV WEBHOOK_URL=""
