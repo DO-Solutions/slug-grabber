@@ -28,7 +28,6 @@ spec:
       value: https://webhook.site/<your-webhook-id>
     git:
       branch: main
-      deploy_on_push: true
       repo_clone_url: https://github.com/DO-Solutions/slug-grabber.git
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-0.5gb
