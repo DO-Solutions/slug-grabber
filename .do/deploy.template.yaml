@@ -1,0 +1,24 @@
+spec:
+  name: do-slug-grabber
+  services:
+  - name: do-slug-grabber
+    dockerfile_path: Dockerfile
+    github:
+      branch: main
+      repo_clone_url: https://github.com/DO-Solutions/slug-grabber.git
+    envs:
+    - key: DO_API_TOKEN
+      scope: RUN_TIME
+      type: SECRET
+    - key: SLUG # https://slugs.do-api.dev/
+      value: "s-1vcpu-1gb"
+    - key: REGION
+      value: "tor1"
+    - key: IMAGE
+      value: "debian-12-x64"
+    - key: DESIRED_COUNT
+      value: "1"
+    - key: SSH_KEYS
+      scope: RUN_TIME
+    - key: WEBHOOK_URL
+      scope: RUN_TIME
