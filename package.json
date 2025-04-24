@@ -1,0 +1,25 @@
+{
+  "name": "slug-grabber",
+  "version": "1.0.0",
+  "description": "A Node.js application to automatically provision DigitalOcean Droplets when they become available",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "digitalocean",
+    "gpu",
+    "h100",
+    "droplet",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "yargs": "^17.7.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+} 
