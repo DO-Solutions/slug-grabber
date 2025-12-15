@@ -59,13 +59,37 @@ async function notifyWebhook(data) {
     return false;
   }
 
+  // Prepare payload – Slack webhooks expect a top-level "text" field
+  let payload = data;
+  if (typeof data === 'object' && data !== null && webhookUrl.includes('hooks.slack.com')) {
+    // Create a concise human-readable message for Slack
+    let text = '';
+    if (data.event === 'droplet_created' && data.droplet) {
+      text = `Droplet created: ${data.droplet.name} (ID: ${data.droplet.id}) in ${data.configuration?.region || 'unknown region'} using ${data.configuration?.slug || 'unknown size'}.`;
+    } else if (data.event === 'droplets_created_summary') {
+      text = `Created ${data.createdCount} droplets (existing: ${data.existingCount}) for slug ${data.configuration?.slug || 'unknown'} in ${data.configuration?.region || 'unknown region'}. IDs: ${data.dropletIds?.join(', ') || 'n/a'}.`;
+    } else {
+      text = `Slug Grabber notification:\n\`\`\`\n${JSON.stringify(data, null, 2)}\n\`\`\``;
+    }
+    payload = { text };
+  }
+
   try {
     console.log(`Sending webhook notification to ${webhookUrl}`);
-    await axios.post(webhookUrl, data);
+    await axios.post(webhookUrl, payload);
     console.log('Webhook notification sent successfully');
     return true;
   } catch (error) {
-    console.error('Error sending webhook notification:', error.message);
+    if (error.response) {
+      console.error(
+        'Error sending webhook notification:',
+        `status=${error.response.status}`,
+        'body=',
+        JSON.stringify(error.response.data)
+      );
+    } else {
+      console.error('Error sending webhook notification:', error.message);
+    }
     return false;
   }
 }
