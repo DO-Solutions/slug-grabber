@@ -259,7 +259,8 @@ async function main() {
   }
 
   console.log('DigitalOcean Slug Grabber Node.js started');
-  console.log(`Configuration: slug=${argv.slug}, region=${argv.region}, image=${argv.image}, desired_count=${argv.desired_count}`);
+  const namePrefix = NAME_PREFIX || argv.slug;
+  console.log(`Configuration: slug=${argv.slug}, region=${argv.region}, image=${argv.image}, desired_count=${argv.desired_count}, droplet_name=${namePrefix}-{index}`);
   
   if (NAME_PREFIX) {
     console.log(`Droplet name prefix: ${NAME_PREFIX}`);
