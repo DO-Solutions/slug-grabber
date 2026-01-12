@@ -6,6 +6,7 @@ const { hideBin } = require('yargs/helpers');
 const DO_API_URL = 'https://api.digitalocean.com/v2';
 let DO_API_TOKEN = process.env.DO_API_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL || '';
+const NAME_PREFIX = process.env.NAME_PREFIX || null;
 
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
@@ -195,7 +196,8 @@ async function checkAndCreateDroplets() {
     // Create the required number of droplets
     const createdDroplets = [];
     for (let i = 0; i < toCreate; i++) {
-      const name = `${slug}-${existingDroplets.length + i + 1}`;
+      const namePrefix = NAME_PREFIX || slug;
+      const name = `${namePrefix}-${existingDroplets.length + i + 1}`;
       const droplet = await createDroplet({
         name,
         slug,
@@ -258,6 +260,10 @@ async function main() {
 
   console.log('DigitalOcean Slug Grabber Node.js started');
   console.log(`Configuration: slug=${argv.slug}, region=${argv.region}, image=${argv.image}, desired_count=${argv.desired_count}`);
+  
+  if (NAME_PREFIX) {
+    console.log(`Droplet name prefix: ${NAME_PREFIX}`);
+  }
   
   if (webhookUrl) {
     console.log(`Webhook notifications enabled: ${webhookUrl}`);

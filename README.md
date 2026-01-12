@@ -73,6 +73,9 @@ spec:
     - key: WEBHOOK_URL
       scope: RUN_TIME
       value: https://webhook.site/<your-webhook-id>
+    - key: NAME_PREFIX
+      scope: RUN_TIME
+      value: my-droplet  # Optional: custom prefix for droplet names
     git:
       branch: main
       deploy_on_push: true
@@ -102,6 +105,7 @@ spec:
      -e DESIRED_COUNT="1" \
      -e SSH_KEYS="123456,789012" \
      -e WEBHOOK_URL="https://your-webhook-url" \
+     -e NAME_PREFIX="my-droplet" \
      --name do-h100-grabber \
      do-grabber
    ```
@@ -125,7 +129,7 @@ spec:
 
 3. Run the application with your configuration:
    ```bash
-   DO_API_TOKEN="your-do-api-token" WEBHOOK_URL="https://your-webhook-url" npm start -- \
+   DO_API_TOKEN="your-do-api-token" WEBHOOK_URL="https://your-webhook-url" NAME_PREFIX="my-droplet" npm start -- \
      --slug="gpu-h100x8-640gb" \
      --region="tor1" \
      --image="gpu-h100x8-base" \
@@ -135,7 +139,7 @@ spec:
 
    You can also specify the webhook URL as a command line parameter:
    ```bash
-   DO_API_TOKEN="your-do-api-token" npm start -- \
+   DO_API_TOKEN="your-do-api-token" NAME_PREFIX="my-droplet" npm start -- \
      --slug="gpu-h100x8-640gb" \
      --region="tor1" \
      --image="gpu-h100x8-base" \
@@ -156,6 +160,9 @@ spec:
 | `desired_count` | The total number of GPU Droplets you want | `1` |
 | `ssh_keys` | Comma-separated list of SSH key IDs to add | `123456,789012` |
 | `webhook_url` | URL to send notifications when Droplets are created | `https://hooks.slack.com/services/XXX/YYY/ZZZ` |
+| `NAME_PREFIX` | (Optional) Custom prefix for Droplet names. If not set, uses the slug as prefix | `my-droplet` |
+
+**Note:** Droplet names follow the pattern `{prefix}-{index}`. By default, the prefix is the slug (e.g., `gpu-h100x8-640gb-1`). If `NAME_PREFIX` is set, it will be used instead (e.g., `my-droplet-1`).
 
 ## Webhook Notifications
 
