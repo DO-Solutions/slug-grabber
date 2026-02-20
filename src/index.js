@@ -8,6 +8,11 @@ let DO_API_TOKEN = process.env.DO_API_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL || '';
 const NAME_PREFIX = process.env.NAME_PREFIX || null;
 
+function parseRegions(regionStr) {
+  if (!regionStr || typeof regionStr !== 'string') return [];
+  return regionStr.split(',').map(r => r.trim()).filter(Boolean);
+}
+
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
   .option('slug', {
@@ -16,7 +21,7 @@ const argv = yargs(hideBin(process.argv))
   })
   .option('region', {
     type: 'string',
-    description: 'Region to deploy the Droplet (e.g., tor1)'
+    description: 'Region(s) to deploy Droplets — comma-separated for multiple (e.g., tor1 or tor1,nyc1,sfo3)'
   })
   .option('image', {
     type: 'string',
@@ -34,12 +39,22 @@ const argv = yargs(hideBin(process.argv))
     type: 'string',
     description: 'Webhook URL to notify when a Droplet is created'
   })
-  .demandOption(['slug', 'region', 'image', 'desired_count'], 'Please provide all required options')
+  .demandOption(['slug', 'image', 'desired_count'], 'Please provide all required options')
+  .check((argv) => {
+    const regionsStr = argv.region || process.env.REGION;
+    const parsed = parseRegions(regionsStr);
+    if (parsed.length === 0) {
+      throw new Error('At least one region is required. Use --region tor1,nyc1 or set REGION=tor1,nyc1');
+    }
+    return true;
+  })
   .help()
   .argv;
 
 // Override webhook URL from command line if provided
 const webhookUrl = argv.webhook_url || WEBHOOK_URL;
+
+const regions = parseRegions(argv.region || process.env.REGION);
 
 // Set up Axios instance for DigitalOcean API
 const doClient = axios.create({
@@ -126,14 +141,19 @@ async function listAllDroplets() {
 }
 
 /**
- * Count existing droplets of the specified slug
+ * Count existing droplets of the specified slug, optionally in a specific region
  * @param {string} slug - The droplet size slug to count
- * @returns {Promise<Array>} - Array of existing droplets with the specified slug
+ * @param {string} [region] - Optional region slug to filter by (e.g. tor1)
+ * @returns {Promise<Array>} - Array of existing droplets with the specified slug (and region)
  */
-async function countExistingDroplets(slug) {
+async function countExistingDroplets(slug, region) {
   try {
     const allDroplets = await listAllDroplets();
-    return allDroplets.filter(droplet => droplet.size_slug === slug);
+    let filtered = allDroplets.filter(droplet => droplet.size_slug === slug);
+    if (region) {
+      filtered = filtered.filter(droplet => droplet.region && droplet.region.slug === region);
+    }
+    return filtered;
   } catch (error) {
     console.error('Error counting existing droplets:', error.message);
     return [];
@@ -167,84 +187,81 @@ async function createDroplet(options) {
 }
 
 /**
- * Check and create droplets if needed
+ * Check and create droplets if needed (per region)
  */
 async function checkAndCreateDroplets() {
-  // Get configuration from command line arguments
-  const { slug, region, image, desired_count, ssh_keys } = argv;
-  
-  // Parse SSH keys if provided
+  const { slug, image, desired_count, ssh_keys } = argv;
   const sshKeys = ssh_keys ? ssh_keys.split(',').map(key => key.trim()) : [];
-  
-  console.log(`Checking for ${slug} droplets in ${region}...`);
-  
-  try {
-    // Count existing droplets
-    const existingDroplets = await countExistingDroplets(slug);
-    console.log(`Found ${existingDroplets.length} existing ${slug} droplets. Desired count: ${desired_count}`);
-    
-    // Calculate how many new droplets to create
-    const toCreate = Math.max(0, desired_count - existingDroplets.length);
-    
-    if (toCreate === 0) {
-      console.log(`No new droplets needed. Current count: ${existingDroplets.length}, desired: ${desired_count}`);
-      return;
-    }
-    
-    console.log(`Creating ${toCreate} new ${slug} droplets...`);
-    
-    // Create the required number of droplets
-    const createdDroplets = [];
-    for (let i = 0; i < toCreate; i++) {
-      const namePrefix = NAME_PREFIX || slug;
-      const name = `${namePrefix}-${existingDroplets.length + i + 1}`;
-      const droplet = await createDroplet({
-        name,
-        slug,
-        region,
-        image,
-        sshKeys
-      });
-      
-      if (droplet) {
-        createdDroplets.push(droplet);
-        console.log(`Created droplet: ${name} (ID: ${droplet.id})`);
-        
-        // Send webhook notification for each created droplet
-        if (webhookUrl) {
-          await notifyWebhook({
-            event: 'droplet_created',
-            droplet,
-            timestamp: new Date().toISOString(),
-            configuration: {
-              slug,
-              region,
-              image
-            }
-          });
-        }
+
+  if (regions.length === 0) {
+    console.error('At least one region is required (e.g. tor1 or tor1,nyc1,sfo3)');
+    return;
+  }
+
+  const allCreatedDroplets = [];
+  let totalExisting = 0;
+
+  for (const region of regions) {
+    try {
+      console.log(`Checking for ${slug} droplets in ${region}...`);
+      const existingDroplets = await countExistingDroplets(slug, region);
+      totalExisting += existingDroplets.length;
+      console.log(`Found ${existingDroplets.length} existing ${slug} droplets in ${region}. Desired count: ${desired_count}`);
+
+      const toCreate = Math.max(0, desired_count - existingDroplets.length);
+      if (toCreate === 0) {
+        console.log(`No new droplets needed in ${region}. Current count: ${existingDroplets.length}, desired: ${desired_count}`);
+        continue;
       }
-    }
-    
-    console.log(`Successfully created ${createdDroplets.length} new droplets.`);
-    
-    // Send a summary webhook notification if multiple droplets were created
-    if (createdDroplets.length > 1 && webhookUrl) {
-      await notifyWebhook({
-        event: 'droplets_created_summary',
-        createdCount: createdDroplets.length,
-        existingCount: existingDroplets.length,
-        dropletIds: createdDroplets.map(d => d.id),
-        timestamp: new Date().toISOString(),
-        configuration: {
+
+      console.log(`Creating ${toCreate} new ${slug} droplets in ${region}...`);
+      const namePrefix = NAME_PREFIX || slug;
+
+      for (let i = 0; i < toCreate; i++) {
+        const name = `${namePrefix}-${region}-${existingDroplets.length + i + 1}`;
+        const droplet = await createDroplet({
+          name,
           slug,
           region,
-          image
+          image,
+          sshKeys
+        });
+
+        if (droplet) {
+          allCreatedDroplets.push(droplet);
+          console.log(`Created droplet: ${name} (ID: ${droplet.id}) in ${region}`);
+
+          if (webhookUrl) {
+            await notifyWebhook({
+              event: 'droplet_created',
+              droplet,
+              timestamp: new Date().toISOString(),
+              configuration: { slug, region, image }
+            });
+          }
         }
-      });
+      }
+    } catch (error) {
+      console.error(`Error in checkAndCreateDroplets for ${region}:`, error.message);
     }
-  } catch (error) {
-    console.error('Error in checkAndCreateDroplets:', error.message);
+  }
+
+  if (allCreatedDroplets.length > 1 && webhookUrl) {
+    await notifyWebhook({
+      event: 'droplets_created_summary',
+      createdCount: allCreatedDroplets.length,
+      existingCount: totalExisting,
+      dropletIds: allCreatedDroplets.map(d => d.id),
+      timestamp: new Date().toISOString(),
+      configuration: {
+        slug,
+        region: regions.join(','),
+        image
+      }
+    });
+  }
+  if (allCreatedDroplets.length > 0) {
+    console.log(`Successfully created ${allCreatedDroplets.length} new droplets across regions.`);
   }
 }
 
@@ -260,7 +277,11 @@ async function main() {
 
   console.log('DigitalOcean Slug Grabber Node.js started');
   const namePrefix = NAME_PREFIX || argv.slug;
-  console.log(`Configuration: slug=${argv.slug}, region=${argv.region}, image=${argv.image}, desired_count=${argv.desired_count}, droplet_name=${namePrefix}-{index}`);
+  if (regions.length === 0) {
+    console.error('At least one region is required. Set REGION (e.g. tor1,nyc1) or pass --region tor1,nyc1');
+    process.exit(1);
+  }
+  console.log(`Configuration: slug=${argv.slug}, regions=${regions.join(',')}, image=${argv.image}, desired_count=${argv.desired_count} per region, droplet_name=${namePrefix}-{region}-{index}`);
   
   if (NAME_PREFIX) {
     console.log(`Droplet name prefix: ${NAME_PREFIX}`);

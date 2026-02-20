@@ -60,7 +60,7 @@ spec:
       value: s-1vcpu-1gb
     - key: REGION
       scope: RUN_TIME
-      value: tor1
+      value: tor1  # or multiple: tor1,nyc1,sfo3
     - key: IMAGE
       scope: RUN_TIME
       value: debian-12-x64
@@ -135,6 +135,9 @@ spec:
      --image="gpu-h100x8-base" \
      --desired_count=1 \
      --ssh_keys="123456,789012"
+
+   # Multiple regions (grabs slug in each — e.g. 1 droplet in tor1 and 1 in nyc1):
+   npm start -- --slug="gpu-h100x8-640gb" --region="tor1,nyc1" --image="gpu-h100x8-base" --desired_count=1
    ```
 
    You can also specify the webhook URL as a command line parameter:
@@ -155,14 +158,14 @@ spec:
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | `slug` | The size/type of GPU Droplet | `gpu-h100x8-640gb` |
-| `region` | The region where Droplets will be created | `tor1` |
+| `region` | Region(s) where Droplets will be created — comma-separated for multiple | `tor1` or `tor1,nyc1,sfo3` |
 | `image` | The OS image to use | `gpu-h100x8-base` |
-| `desired_count` | The total number of GPU Droplets you want | `1` |
+| `desired_count` | Number of Droplets to maintain **per region** | `1` |
 | `ssh_keys` | Comma-separated list of SSH key IDs to add | `123456,789012` |
 | `webhook_url` | URL to send notifications when Droplets are created | `https://hooks.slack.com/services/XXX/YYY/ZZZ` |
 | `NAME_PREFIX` | (Optional) Custom prefix for Droplet names. If not set, uses the slug as prefix | `my-droplet` |
 
-**Note:** Droplet names follow the pattern `{prefix}-{index}`. By default, the prefix is the slug (e.g., `gpu-h100x8-640gb-1`). If `NAME_PREFIX` is set, it will be used instead (e.g., `my-droplet-1`).
+**Note:** Droplet names follow the pattern `{prefix}-{region}-{index}` (e.g., `my-droplet-tor1-1`, `my-droplet-nyc1-1`). By default, the prefix is the slug; set `NAME_PREFIX` to use a custom prefix. With multiple regions, the app maintains `desired_count` Droplets in each region (e.g. `REGION=tor1,nyc1` and `desired_count=1` creates up to 1 in tor1 and 1 in nyc1).
 
 ## Webhook Notifications
 
@@ -191,6 +194,8 @@ When a Droplet is successfully created, the application will send a webhook noti
   }
 }
 ```
+
+With multiple regions, droplet names include the region (e.g. `my-droplet-tor1-1`, `my-droplet-nyc1-1`).
 
 </details>
 
