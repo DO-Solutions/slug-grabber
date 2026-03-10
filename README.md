@@ -162,7 +162,7 @@ spec:
 | `image` | The OS image to use | `gpu-h100x8-base` |
 | `desired_count` | Number of Droplets to maintain **per region** | `1` |
 | `ssh_keys` | Comma-separated list of SSH key IDs to add | `123456,789012` |
-| `webhook_url` | URL to send notifications when Droplets are created | `https://hooks.slack.com/services/XXX/YYY/ZZZ` |
+| `webhook_url` | (Optional) URL to send notifications when Droplets are created | `https://hooks.slack.com/services/XXX/YYY/ZZZ` |
 | `NAME_PREFIX` | (Optional) Custom prefix for Droplet names. If not set, uses the slug as prefix | `my-droplet` |
 
 **Note:** Droplet names follow the pattern `{prefix}-{region}-{index}` (e.g., `my-droplet-tor1-1`, `my-droplet-nyc1-1`). By default, the prefix is the slug; set `NAME_PREFIX` to use a custom prefix. With multiple regions, the app maintains `desired_count` Droplets in each region (e.g. `REGION=tor1,nyc1` and `desired_count=1` creates up to 1 in tor1 and 1 in nyc1).
