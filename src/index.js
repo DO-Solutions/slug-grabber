@@ -141,17 +141,21 @@ async function listAllDroplets() {
 }
 
 /**
- * Count existing droplets of the specified slug, optionally in a specific region
- * @param {string} slug - The droplet size slug to count
- * @param {string} [region] - Optional region slug to filter by (e.g. tor1)
- * @returns {Promise<Array>} - Array of existing droplets with the specified slug (and region)
+ * Count existing droplets by tag, optionally filtered to specific regions
+ * @param {string} slug - The tag to match (droplets are tagged with the slug)
+ * @param {string[]} [filterRegions] - Optional list of region slugs to filter by
+ * @returns {Promise<Array>} - Array of existing droplets with the specified tag (and regions)
  */
-async function countExistingDroplets(slug, region) {
+async function countExistingDroplets(slug, filterRegions) {
   try {
     const allDroplets = await listAllDroplets();
-    let filtered = allDroplets.filter(droplet => droplet.size_slug === slug);
-    if (region) {
-      filtered = filtered.filter(droplet => droplet.region && droplet.region.slug === region);
+    let filtered = allDroplets.filter(droplet =>
+      Array.isArray(droplet.tags) && droplet.tags.includes(slug)
+    );
+    if (filterRegions && filterRegions.length > 0) {
+      filtered = filtered.filter(droplet =>
+        droplet.region && filterRegions.includes(droplet.region.slug)
+      );
     }
     return filtered;
   } catch (error) {
@@ -187,7 +191,9 @@ async function createDroplet(options) {
 }
 
 /**
- * Check and create droplets if needed (per region)
+ * Check and create droplets if needed (OR logic across regions)
+ * With multiple regions and desired_count=N, the tool checks all listed regions
+ * for existing tagged droplets and only creates new ones until the global count is met.
  */
 async function checkAndCreateDroplets() {
   const { slug, image, desired_count, ssh_keys } = argv;
@@ -198,27 +204,39 @@ async function checkAndCreateDroplets() {
     return;
   }
 
+  console.log(`Checking for ${slug} droplets across regions: ${regions.join(', ')}...`);
+  const existingDroplets = await countExistingDroplets(slug, regions);
+  const totalExisting = existingDroplets.length;
+  console.log(`Found ${totalExisting} existing droplet(s) tagged "${slug}" across listed regions. Desired count: ${desired_count}`);
+
+  const toCreate = Math.max(0, desired_count - totalExisting);
+  if (toCreate === 0) {
+    console.log(`No new droplets needed. Current count: ${totalExisting}, desired: ${desired_count}`);
+    return;
+  }
+
+  console.log(`Need to create ${toCreate} new droplet(s). Trying regions in order: ${regions.join(', ')}...`);
   const allCreatedDroplets = [];
-  let totalExisting = 0;
+  const namePrefix = NAME_PREFIX || slug;
+
+  // Count existing droplets per region for naming index
+  const existingPerRegion = {};
+  for (const droplet of existingDroplets) {
+    const r = droplet.region?.slug;
+    if (r) existingPerRegion[r] = (existingPerRegion[r] || 0) + 1;
+  }
+
+  let remaining = toCreate;
 
   for (const region of regions) {
+    if (remaining <= 0) break;
+
     try {
-      console.log(`Checking for ${slug} droplets in ${region}...`);
-      const existingDroplets = await countExistingDroplets(slug, region);
-      totalExisting += existingDroplets.length;
-      console.log(`Found ${existingDroplets.length} existing ${slug} droplets in ${region}. Desired count: ${desired_count}`);
+      const regionIndex = existingPerRegion[region] || 0;
 
-      const toCreate = Math.max(0, desired_count - existingDroplets.length);
-      if (toCreate === 0) {
-        console.log(`No new droplets needed in ${region}. Current count: ${existingDroplets.length}, desired: ${desired_count}`);
-        continue;
-      }
-
-      console.log(`Creating ${toCreate} new ${slug} droplets in ${region}...`);
-      const namePrefix = NAME_PREFIX || slug;
-
-      for (let i = 0; i < toCreate; i++) {
-        const name = `${namePrefix}-${region}-${existingDroplets.length + i + 1}`;
+      for (let i = 0; i < remaining; i++) {
+        const name = `${namePrefix}-${region}-${regionIndex + i + 1}`;
+        console.log(`Attempting to create droplet "${name}" in ${region}...`);
         const droplet = await createDroplet({
           name,
           slug,
@@ -229,6 +247,7 @@ async function checkAndCreateDroplets() {
 
         if (droplet) {
           allCreatedDroplets.push(droplet);
+          remaining--;
           console.log(`Created droplet: ${name} (ID: ${droplet.id}) in ${region}`);
 
           if (webhookUrl) {
@@ -239,10 +258,14 @@ async function checkAndCreateDroplets() {
               configuration: { slug, region, image }
             });
           }
+        } else {
+          // Creation failed in this region, move to next region
+          console.log(`Failed to create droplet in ${region}, trying next region...`);
+          break;
         }
       }
     } catch (error) {
-      console.error(`Error in checkAndCreateDroplets for ${region}:`, error.message);
+      console.error(`Error creating droplet in ${region}: ${error.message}. Trying next region...`);
     }
   }
 
@@ -261,7 +284,10 @@ async function checkAndCreateDroplets() {
     });
   }
   if (allCreatedDroplets.length > 0) {
-    console.log(`Successfully created ${allCreatedDroplets.length} new droplets across regions.`);
+    console.log(`Successfully created ${allCreatedDroplets.length} new droplet(s) across regions.`);
+  }
+  if (remaining > 0) {
+    console.log(`Warning: Could not create ${remaining} droplet(s). All listed regions exhausted.`);
   }
 }
 
@@ -281,7 +307,7 @@ async function main() {
     console.error('At least one region is required. Set REGION (e.g. tor1,nyc1) or pass --region tor1,nyc1');
     process.exit(1);
   }
-  console.log(`Configuration: slug=${argv.slug}, regions=${regions.join(',')}, image=${argv.image}, desired_count=${argv.desired_count} per region, droplet_name=${namePrefix}-{region}-{index}`);
+  console.log(`Configuration: slug=${argv.slug}, regions=${regions.join(',')}, image=${argv.image}, desired_count=${argv.desired_count} (global across regions), droplet_name=${namePrefix}-{region}-{index}`);
   
   if (NAME_PREFIX) {
     console.log(`Droplet name prefix: ${NAME_PREFIX}`);

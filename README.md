@@ -30,7 +30,8 @@ A Node.js application that automatically provisions DigitalOcean Droplets when t
 
 - **Automatic Provisioning**: Creates Droplets when they become available
 - **Configurable Parameters**: Specify Droplet size, region, image, and count
-- **Smart Provisioning**: Only creates new Droplets if your desired count isn't reached
+- **Smart Provisioning**: Only creates new Droplets if your desired count isn't reached (recognized by tag)
+- **Multi-Region Failover**: With multiple regions, tries each in order until the desired count is met
 - **Docker Support**: Run as a containerized application
 - **Webhook Notifications**: Get notified via webhook when Droplets are created
 
@@ -136,7 +137,7 @@ spec:
      --desired_count=1 \
      --ssh_keys="123456,789012"
 
-   # Multiple regions (grabs slug in each — e.g. 1 droplet in tor1 and 1 in nyc1):
+   # Multiple regions (tries tor1 first, falls back to nyc1 if unavailable):
    npm start -- --slug="gpu-h100x8-640gb" --region="tor1,nyc1" --image="gpu-h100x8-base" --desired_count=1
    ```
 
@@ -160,12 +161,14 @@ spec:
 | `slug` | The size/type of GPU Droplet | `gpu-h100x8-640gb` |
 | `region` | Region(s) where Droplets will be created — comma-separated for multiple | `tor1` or `tor1,nyc1,sfo3` |
 | `image` | The OS image to use | `gpu-h100x8-base` |
-| `desired_count` | Number of Droplets to maintain **per region** | `1` |
+| `desired_count` | Number of Droplets to maintain **globally across all listed regions** | `1` |
 | `ssh_keys` | Comma-separated list of SSH key IDs to add | `123456,789012` |
 | `webhook_url` | (Optional) URL to send notifications when Droplets are created | `https://hooks.slack.com/services/XXX/YYY/ZZZ` |
 | `NAME_PREFIX` | (Optional) Custom prefix for Droplet names. If not set, uses the slug as prefix | `my-droplet` |
 
-**Note:** Droplet names follow the pattern `{prefix}-{region}-{index}` (e.g., `my-droplet-tor1-1`, `my-droplet-nyc1-1`). By default, the prefix is the slug; set `NAME_PREFIX` to use a custom prefix. With multiple regions, the app maintains `desired_count` Droplets in each region (e.g. `REGION=tor1,nyc1` and `desired_count=1` creates up to 1 in tor1 and 1 in nyc1).
+**Note:** Droplet names follow the pattern `{prefix}-{region}-{index}` (e.g., `my-droplet-tor1-1`, `my-droplet-nyc1-1`). By default, the prefix is the slug; set `NAME_PREFIX` to use a custom prefix. With multiple regions, `desired_count` is the **global total** — the app checks all listed regions for existing tagged droplets and only creates new ones until the count is met (e.g. `REGION=tor1,nyc1` and `desired_count=1` creates 1 droplet total, trying tor1 first then nyc1 if needed).
+
+**Droplet Recognition:** Existing droplets are identified by their **tag** (matching the slug), not by size slug. This means droplets created outside the tool will be counted as long as they are tagged with the slug value. New droplets created by the tool are automatically tagged.
 
 ## Webhook Notifications
 
@@ -224,18 +227,19 @@ With multiple regions, droplet names include the region (e.g. `my-droplet-tor1-1
 <details>
 
 ```bash
-DigitalOcean Slug Grabber started
-Configuration: slug=s-1vcpu-1gb, region=tor1, image=debian-12-x64, desired_count=1
+DigitalOcean Slug Grabber Node.js started
+Configuration: slug=s-1vcpu-1gb, regions=tor1, image=debian-12-x64, desired_count=1 (global across regions)
 Webhook notifications enabled: https://webhook.site/3345c481-c248-4956-9361-335a0d1abcc8
-Checking for s-1vcpu-1gb droplets in tor1...
-Found 0 existing s-1vcpu-1gb droplets. Desired count: 1
-Creating 1 new s-1vcpu-1gb droplets...
-Created droplet: s-1vcpu-1gb-1 (ID: 491276154)
+Checking for s-1vcpu-1gb droplets across regions: tor1...
+Found 0 existing droplet(s) tagged "s-1vcpu-1gb" across listed regions. Desired count: 1
+Need to create 1 new droplet(s). Trying regions in order: tor1...
+Attempting to create droplet "s-1vcpu-1gb-tor1-1" in tor1...
+Created droplet: s-1vcpu-1gb-tor1-1 (ID: 491276154) in tor1
 Sending webhook notification to https://webhook.site/3345c481-c248-4956-9361-335a0d1abcc8
 Webhook notification sent successfully
-Successfully created 1 new droplets.
-Checking for s-1vcpu-1gb droplets in tor1...
-Found 1 existing s-1vcpu-1gb droplets. Desired count: 1
+Successfully created 1 new droplet(s) across regions.
+Checking for s-1vcpu-1gb droplets across regions: tor1...
+Found 1 existing droplet(s) tagged "s-1vcpu-1gb" across listed regions. Desired count: 1
 No new droplets needed. Current count: 1, desired: 1
 ```
 </details>
