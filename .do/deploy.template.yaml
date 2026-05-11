@@ -1,36 +1,50 @@
 spec:
   name: do-slug-grabber
   region: lon
-  workers:
-  - dockerfile_path: /Dockerfile
+  services:
+  - name: slug-grabber
+    http_port: 8080
+    dockerfile_path: /Dockerfile
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
     envs:
-    - key: DO_API_TOKEN
+    - key: DO_CLIENT_ID
       scope: RUN_TIME
       type: SECRET
-      value: 
-    - key: SLUG
+      value: ""
+    - key: DO_CLIENT_SECRET
       scope: RUN_TIME
-      value: s-1vcpu-1gb
-    - key: REGION
+      type: SECRET
+      value: ""
+    - key: SESSION_SECRET
       scope: RUN_TIME
-      value: tor1
-    - key: IMAGE
+      type: SECRET
+      value: "" # generate: openssl rand -hex 32
+    - key: SESSION_ENCRYPTION_KEY
       scope: RUN_TIME
-      value: debian-12-x64
-    - key: DESIRED_COUNT
+      type: SECRET
+      value: "" # generate: openssl rand -hex 32
+    - key: SPACES_KEY
       scope: RUN_TIME
-      value: "1"
-    - key: SSH_KEYS
+      type: SECRET
+      value: ""
+    - key: SPACES_SECRET
       scope: RUN_TIME
-      value: "<id>" # doctl compute ssh-key list
-    - key: WEBHOOK_URL
+      type: SECRET
+      value: ""
+    - key: SPACES_ENDPOINT
       scope: RUN_TIME
-      value: https://webhook.site/<your-webhook-id>
+      value: "https://nyc3.digitaloceanspaces.com"
+    - key: SPACES_BUCKET
+      scope: RUN_TIME
+      value: "slug-grabber-sessions"
+    - key: APP_URL
+      scope: RUN_TIME
+      value: "" # e.g. https://slug-grabber.ondigitalocean.app
+    - key: MAX_SESSIONS
+      scope: RUN_TIME
+      value: "50"
     git:
       branch: main
       repo_clone_url: https://github.com/DO-Solutions/slug-grabber.git
-    instance_count: 1
-    instance_size_slug: apps-s-1vcpu-0.5gb
-    name: slug-grabber
     source_dir: /
-  

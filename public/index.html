@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slug Grabber</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:       #04090f;
+  --surface:  #080f1a;
+  --card:     #0b1525;
+  --input:    #060d18;
+  --border:   #132033;
+  --border-hi:#1e3352;
+  --blue:     #006eff;
+  --blue-glow:rgba(0,110,255,.18);
+  --blue-dim: rgba(0,110,255,.08);
+  --green:    #00d97e;
+  --green-glow:rgba(0,217,126,.15);
+  --red:      #ff4757;
+  --red-dim:  rgba(255,71,87,.12);
+  --amber:    #ffab00;
+  --text:     #cce0ff;
+  --text-2:   #5a7fa8;
+  --text-3:   #243a55;
+  --mono:     'SF Mono','Cascadia Code','Fira Code','JetBrains Mono',Consolas,'Courier New',monospace;
+  --ui:       -apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  --r:        7px;
+  --r-sm:     4px;
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--ui);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* ── screens ── */
+.scr{display:none}
+.scr.on{display:flex}
+
+/* ── keyframes ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes ripple{0%{transform:scale(1);opacity:.5}100%{transform:scale(2.6);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes gridMove{to{background-position:40px 40px}}
+@keyframes logIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+
+/* ══════════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════════ */
+#s-login{
+  min-height:100vh;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  position:relative;
+  overflow:hidden;
+}
+
+.bg-grid{
+  position:absolute;inset:-40px;
+  background-image:
+    linear-gradient(rgba(0,110,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,110,255,.035) 1px, transparent 1px);
+  background-size:40px 40px;
+  animation:gridMove 6s linear infinite;
+  pointer-events:none;
+}
+
+.bg-orb{
+  position:absolute;
+  width:700px;height:700px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(0,80,200,.09) 0%, transparent 65%);
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+
+.login-card{
+  position:relative;z-index:1;
+  width:100%;max-width:440px;
+  background:var(--card);
+  border:1px solid var(--border-hi);
+  border-radius:14px;
+  padding:40px;
+  animation:fadeUp .5s ease;
+  box-shadow:0 0 0 1px rgba(0,110,255,.06),0 32px 80px rgba(0,0,0,.5),0 0 80px rgba(0,100,255,.05);
+}
+
+.l-brand{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+
+.l-icon{
+  width:44px;height:44px;flex-shrink:0;
+  background:linear-gradient(135deg,#005ae0,#0080ff);
+  border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 24px rgba(0,110,255,.35);
+}
+.l-icon svg{width:24px;height:24px;fill:#fff}
+
+.l-name{
+  font-family:var(--mono);
+  font-size:22px;font-weight:700;
+  letter-spacing:-1px;color:var(--text);
+}
+.l-name em{color:var(--blue);font-style:normal}
+
+.l-version{
+  font-family:var(--mono);
+  font-size:10px;letter-spacing:2px;
+  color:var(--text-3);text-transform:uppercase;
+  margin-bottom:24px;
+}
+
+.l-tagline{
+  font-size:14px;color:var(--text-2);
+  line-height:1.65;margin-bottom:28px;
+}
+
+.l-features{
+  list-style:none;
+  margin-bottom:32px;
+  display:flex;flex-direction:column;gap:11px;
+}
+.l-features li{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:13px;color:var(--text-2);
+}
+.l-features li::before{
+  content:'';
+  display:block;
+  width:5px;height:5px;
+  border-radius:50%;
+  background:var(--blue);
+  flex-shrink:0;
+  margin-top:7px;
+}
+
+.btn-do{
+  width:100%;
+  padding:13px 20px;
+  background:var(--blue);
+  color:#fff;
+  border:none;border-radius:var(--r);
+  font-family:var(--ui);font-size:14px;font-weight:600;
+  cursor:pointer;
+  text-decoration:none;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  transition:background .15s,box-shadow .15s,transform .1s;
+  box-shadow:0 4px 18px rgba(0,110,255,.3);
+}
+.btn-do:hover{background:#1a7fff;box-shadow:0 6px 26px rgba(0,110,255,.42);transform:translateY(-1px)}
+.btn-do:active{transform:translateY(0)}
+.btn-do svg{width:18px;height:18px;fill:#fff;flex-shrink:0}
+
+.l-note{
+  margin-top:18px;text-align:center;
+  font-size:11px;color:var(--text-3);line-height:1.5;
+}
+
+/* ══════════════════════════════════
+   SHARED HEADER
+══════════════════════════════════ */
+.app-hdr{
+  height:50px;background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:12px;
+  flex-shrink:0;
+}
+.hdr-brand{
+  display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:12px;font-weight:700;
+  letter-spacing:2px;color:var(--text);text-transform:uppercase;
+}
+.hdr-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);box-shadow:0 0 7px var(--blue)}
+.hdr-spacer{flex:1}
+.hdr-email{font-size:12px;color:var(--text-2)}
+.hdr-logout{
+  font-size:12px;color:var(--text-2);text-decoration:none;
+  padding:4px 10px;border:1px solid var(--border);border-radius:var(--r-sm);
+  transition:all .15s;
+}
+.hdr-logout:hover{color:var(--text);border-color:var(--border-hi);background:rgba(255,255,255,.03)}
+
+/* ══════════════════════════════════
+   CONFIG SCREEN
+══════════════════════════════════ */
+#s-config{flex-direction:column;min-height:100vh}
+
+.cfg-body{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:36px 24px;overflow-y:auto;
+}
+.cfg-wrap{width:100%;max-width:560px;animation:fadeUp .35s ease}
+
+.cfg-head{margin-bottom:24px}
+.cfg-head h1{font-size:19px;font-weight:700;color:var(--text);margin-bottom:3px}
+.cfg-head p{font-size:13px;color:var(--text-2)}
+
+.fcard{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:26px;margin-bottom:14px;
+}
+.fcard-title{
+  font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:2px;text-transform:uppercase;color:var(--text-3);
+  margin-bottom:20px;
+}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fgrid .f-full{grid-column:1/-1}
+
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-weight:600;letter-spacing:.3px;color:var(--text-2)}
+.field label .opt{font-weight:400;color:var(--text-3);font-style:italic}
+.field input{
+  padding:9px 11px;
+  background:var(--input);
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  color:var(--text);
+  font-family:var(--mono);font-size:12px;
+  outline:none;
+  transition:border-color .15s,box-shadow .15s;
+  width:100%;
+}
+.field input::placeholder{color:var(--text-3)}
+.field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.field .hint{font-size:11px;color:var(--text-3)}
+
+.f-err{
+  background:var(--red-dim);border:1px solid rgba(255,71,87,.28);
+  border-radius:var(--r-sm);padding:9px 13px;font-size:12px;color:var(--red);
+  display:none;
+}
+.f-err.on{display:block}
+
+.btn-start{
+  width:100%;padding:13px;
+  background:var(--blue);color:#fff;border:none;border-radius:var(--r);
+  font-family:var(--ui);font-size:14px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:background .15s,box-shadow .15s,transform .1s;
+  box-shadow:0 4px 16px rgba(0,110,255,.24);margin-top:18px;
+}
+.btn-start:hover:not(:disabled){background:#1a7fff;box-shadow:0 6px 22px rgba(0,110,255,.36);transform:translateY(-1px)}
+.btn-start:active:not(:disabled){transform:translateY(0)}
+.btn-start:disabled{opacity:.55;cursor:not-allowed}
+
+.spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite}
+
+/* ══════════════════════════════════
+   MONITOR SCREEN
+══════════════════════════════════ */
+#s-monitor{flex-direction:column;min-height:100vh}
+
+.mon-body{
+  flex:1;display:grid;
+  grid-template-columns:280px 1fr;
+  height:calc(100vh - 50px);
+  overflow:hidden;
+}
+
+/* sidebar */
+.mon-side{
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  padding:22px;display:flex;flex-direction:column;gap:18px;
+  overflow-y:auto;
+}
+
+.status-pill{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:5px 12px 5px 8px;
+  background:var(--green-glow);
+  border:1px solid rgba(0,217,126,.22);
+  border-radius:20px;width:fit-content;
+}
+.status-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--green);position:relative;
+  box-shadow:0 0 5px var(--green);
+}
+.status-dot::after{
+  content:'';position:absolute;inset:-2px;border-radius:50%;
+  background:var(--green);
+  animation:ripple 1.6s ease-out infinite;
+}
+.status-txt{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--green);letter-spacing:.5px}
+
+.stats{display:flex;flex-direction:column;gap:9px}
+.stat{
+  padding:11px 13px;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--r);
+}
+.stat-lbl{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-3);margin-bottom:3px}
+.stat-val{font-family:var(--mono);font-size:12px;color:var(--text)}
+
+.job-cfg{border-top:1px solid var(--border);padding-top:16px}
+.job-cfg-ttl{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-3);margin-bottom:10px}
+.job-cfg-row{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:8px;
+  padding:4px 0;border-bottom:1px solid rgba(255,255,255,.025);font-size:12px;
+}
+.job-cfg-row:last-child{border-bottom:none}
+.job-cfg-k{color:var(--text-3);flex-shrink:0}
+.job-cfg-v{color:var(--text);text-align:right;font-family:var(--mono);font-size:11px;word-break:break-all}
+
+.notice{
+  padding:10px 12px;
+  background:var(--blue-dim);border:1px solid rgba(0,110,255,.14);
+  border-radius:var(--r-sm);font-size:11px;color:var(--text-2);line-height:1.55;
+}
+
+.btn-stop{
+  width:100%;padding:11px;
+  background:transparent;color:var(--red);
+  border:1px solid rgba(255,71,87,.28);border-radius:var(--r);
+  font-family:var(--ui);font-size:13px;font-weight:600;cursor:pointer;
+  transition:all .15s;margin-top:auto;
+}
+.btn-stop:hover:not(:disabled){background:var(--red-dim);border-color:var(--red)}
+.btn-stop:disabled{opacity:.5;cursor:not-allowed}
+
+/* terminal */
+.term{
+  display:flex;flex-direction:column;
+  background:#020810;position:relative;overflow:hidden;
+}
+.term::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06) 3px,rgba(0,0,0,.06) 4px);
+  pointer-events:none;z-index:1;
+}
+.term-bar{
+  padding:10px 16px;background:rgba(255,255,255,.015);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:7px;
+  flex-shrink:0;position:relative;z-index:2;
+}
+.term-dot{width:11px;height:11px;border-radius:50%}
+.td-r{background:#ff5f57}.td-y{background:#febc2e}.td-g{background:#28c840}
+.term-title{flex:1;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:.5px}
+
+.term-log{
+  flex:1;overflow-y:auto;
+  padding:16px 20px;
+  font-family:var(--mono);font-size:12px;line-height:1.85;
+  position:relative;z-index:2;
+}
+.term-log::-webkit-scrollbar{width:5px}
+.term-log::-webkit-scrollbar-track{background:transparent}
+.term-log::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:3px}
+
+.ll{display:block;white-space:pre-wrap;word-break:break-all;animation:logIn .12s ease}
+.ll.def{color:#3d5e84}
+.ll.ok {color:#00d97e}
+.ll.er {color:#ff4757}
+.ll.warn{color:#ffab00}
+.ll.inf{color:#4d9fff}
+
+.term-cursor{
+  display:inline-block;width:8px;height:14px;
+  background:var(--green);vertical-align:middle;margin-left:1px;
+  animation:blink 1s step-end infinite;opacity:.7;
+}
+.term-empty{font-size:12px;color:var(--text-3);font-family:var(--mono);font-style:italic}
+
+/* loading */
+#s-loading{min-height:100vh;flex-direction:column;align-items:center;justify-content:center}
+.ld-spin{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .75s linear infinite}
+
+/* responsive */
+@media(max-width:640px){
+  .mon-body{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto;min-height:calc(100vh - 50px)}
+  .mon-side{border-right:none;border-bottom:1px solid var(--border)}
+  .term{min-height:360px}
+  .fgrid{grid-template-columns:1fr}
+  .fgrid .f-full{grid-column:1}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="s-loading" class="scr">
+  <div class="ld-spin"></div>
+</div>
+
+<!-- LOGIN -->
+<div id="s-login" class="scr">
+  <div class="bg-grid"></div>
+  <div class="bg-orb"></div>
+  <div class="login-card">
+    <div class="l-brand">
+      <div class="l-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.686 2 6 4.686 6 8c0 4.963 6 14 6 14s6-9.037 6-14c0-3.314-2.686-6-6-6zm0 8.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
+      </div>
+      <div>
+        <div class="l-name">Slug<em>Grabber</em></div>
+      </div>
+    </div>
+    <div class="l-version">v2 · digitalocean</div>
+    <p class="l-tagline">Automatically provision DigitalOcean Droplets the moment they become available — including scarce GPU instances.</p>
+    <ul class="l-features">
+      <li>Polls every 30 seconds, server-side — close your tab freely</li>
+      <li>Survives server restarts via encrypted session persistence</li>
+      <li>Multi-region failover with configurable OR-based logic</li>
+      <li>Webhook alerts for Slack, Discord, or any endpoint</li>
+    </ul>
+    <a href="/auth/login" class="btn-do">
+      <svg viewBox="0 0 24 24"><path d="M12 .5C5.65.5.5 5.65.5 12S5.65 23.5 12 23.5 23.5 18.35 23.5 12 18.35.5 12 .5zm0 19.48v-3.14c3-.004 5.46-2.46 5.46-5.46s-2.46-5.456-5.46-5.456S6.54 8.386 6.54 11.386H3.4c0-4.75 3.85-8.6 8.6-8.6s8.6 3.85 8.6 8.6-3.85 8.6-8.6 8.6zM9.42 19.98v-2.6h5.16v2.6H9.42z"/></svg>
+      Login with DigitalOcean
+    </a>
+    <p class="l-note">Authentication is handled by DigitalOcean OAuth.<br>Your access token is encrypted and never stored in plaintext.</p>
+  </div>
+</div>
+
+<!-- CONFIG -->
+<div id="s-config" class="scr">
+  <header class="app-hdr">
+    <div class="hdr-brand"><div class="hdr-dot"></div>Slug Grabber</div>
+    <div class="hdr-spacer"></div>
+    <span class="hdr-email" id="cfg-email"></span>
+    <a href="/auth/logout" class="hdr-logout">Logout</a>
+  </header>
+  <div class="cfg-body">
+    <div class="cfg-wrap">
+      <div class="cfg-head">
+        <h1>Configure Monitoring</h1>
+        <p>Define the Droplet you want to acquire. Monitoring runs on our server — you can close this tab at any time.</p>
+      </div>
+
+      <div class="fcard">
+        <div class="fcard-title">Target</div>
+        <div class="fgrid">
+          <div class="field f-full">
+            <label for="f-slug">Droplet Slug</label>
+            <input id="f-slug" type="text" placeholder="gpu-h100x8-640gb" autocomplete="off">
+            <span class="hint">The size slug to provision — e.g. gpu-h100x8-640gb or s-1vcpu-1gb</span>
+          </div>
+          <div class="field">
+            <label for="f-region">Region(s)</label>
+            <input id="f-region" type="text" placeholder="tor1,nyc1,sfo3" autocomplete="off">
+            <span class="hint">Comma-separated, tried in order</span>
+          </div>
+          <div class="field">
+            <label for="f-image">Image</label>
+            <input id="f-image" type="text" placeholder="gpu-h100x8-base" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="f-count">Desired Count</label>
+            <input id="f-count" type="number" min="1" value="1">
+            <span class="hint">Global total across all regions</span>
+          </div>
+          <div class="field">
+            <label for="f-prefix">Name Prefix <span class="opt">(optional)</span></label>
+            <input id="f-prefix" type="text" placeholder="my-gpu">
+            <span class="hint">Defaults to the slug value</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fcard">
+        <div class="fcard-title">Access &amp; Notifications</div>
+        <div class="fgrid">
+          <div class="field f-full">
+            <label for="f-keys">SSH Key IDs <span class="opt">(optional)</span></label>
+            <input id="f-keys" type="text" placeholder="12345678,87654321" autocomplete="off">
+            <span class="hint">Comma-separated IDs — run <code>doctl compute ssh-key list</code></span>
+          </div>
+          <div class="field f-full">
+            <label for="f-hook">Webhook URL <span class="opt">(optional)</span></label>
+            <input id="f-hook" type="url" placeholder="https://hooks.slack.com/...">
+            <span class="hint">Notified when a Droplet is created. Slack, Discord, or generic webhook.</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="f-err" class="f-err"></div>
+      <button id="btn-start" class="btn-start">
+        <span id="btn-start-inner">Start Monitoring</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MONITOR -->
+<div id="s-monitor" class="scr">
+  <header class="app-hdr">
+    <div class="hdr-brand"><div class="hdr-dot"></div>Slug Grabber</div>
+    <div class="hdr-spacer"></div>
+    <span class="hdr-email" id="mon-email"></span>
+    <a href="/auth/logout" class="hdr-logout">Logout</a>
+  </header>
+  <div class="mon-body">
+    <aside class="mon-side">
+      <div class="status-pill">
+        <div class="status-dot"></div>
+        <span class="status-txt">MONITORING</span>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="stat-lbl">Started</div><div class="stat-val" id="st-start">—</div></div>
+        <div class="stat"><div class="stat-lbl">Last Poll</div><div class="stat-val" id="st-poll">—</div></div>
+        <div class="stat"><div class="stat-lbl">Last Result</div><div class="stat-val" id="st-result">—</div></div>
+      </div>
+
+      <div class="job-cfg" id="job-cfg-summary"></div>
+
+      <div class="notice">Monitoring runs on our server — safe to close this tab. You'll be notified via webhook when a Droplet is created.</div>
+
+      <button id="btn-stop" class="btn-stop">&#9632; Stop Monitoring</button>
+    </aside>
+
+    <div class="term">
+      <div class="term-bar">
+        <div class="term-dot td-r"></div>
+        <div class="term-dot td-y"></div>
+        <div class="term-dot td-g"></div>
+        <span class="term-title">slug-grabber — live output</span>
+      </div>
+      <div class="term-log" id="term-log">
+        <span class="term-empty">Connecting to log stream…</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+let account=null,jobData=null,sse=null,sseTimer=null,pollInterval=null;
+
+/* ── helpers ── */
+function fmt(iso){
+  if(!iso)return'—';
+  return new Date(iso).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function fmtFull(iso){
+  if(!iso)return'—';
+  const d=new Date(iso);
+  return d.toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+async function api(url,opts={}){
+  const r=await fetch(url,{credentials:'include',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||`HTTP ${r.status}`);
+  return d;
+}
+
+/* ── screens ── */
+function show(id){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+/* ── login ── */
+function renderLogin(){killSSE();show('s-login')}
+
+/* ── config ── */
+function renderConfig(job){
+  killSSE();
+  clearInterval(pollInterval);
+  document.getElementById('cfg-email').textContent=account?.email||'';
+  if(job?.config){
+    const c=job.config;
+    set('f-slug',c.slug);
+    set('f-region',Array.isArray(c.regions)?c.regions.join(','):c.regions||'');
+    set('f-image',c.image);
+    set('f-count',c.desiredCount??1);
+    set('f-keys',(c.sshKeys||[]).join(','));
+    set('f-hook',c.webhookUrl||'');
+    set('f-prefix',c.namePrefix||'');
+  }
+  show('s-config');
+}
+function set(id,v){const e=document.getElementById(id);if(e&&v!=null)e.value=v}
+
+/* ── monitor ── */
+function renderMonitor(job){
+  document.getElementById('mon-email').textContent=account?.email||'';
+  document.getElementById('st-start').textContent=fmtFull(job.startedAt);
+  syncStats(job);
+  renderJobCfg(job.config);
+  show('s-monitor');
+  connectSSE();
+  startPoller();
+}
+
+function syncStats(job){
+  document.getElementById('st-poll').textContent=fmt(job.lastPollAt);
+  const r=job.lastResult;
+  document.getElementById('st-result').textContent=r?`${r.created} created · ${r.existing} existing`:'—';
+}
+
+function renderJobCfg(c){
+  if(!c)return;
+  const rows=[['slug',c.slug],['regions',Array.isArray(c.regions)?c.regions.join(', '):c.regions],['image',c.image],['count',c.desiredCount]];
+  if(c.namePrefix)rows.push(['prefix',c.namePrefix]);
+  document.getElementById('job-cfg-summary').innerHTML=
+    `<div class="job-cfg-ttl">Job Config</div>`+
+    rows.map(([k,v])=>`<div class="job-cfg-row"><span class="job-cfg-k">${k}</span><span class="job-cfg-v">${v}</span></div>`).join('');
+}
+
+/* ── SSE ── */
+function connectSSE(){
+  if(sse){sse.close();sse=null}
+  clearTimeout(sseTimer);
+  const log=document.getElementById('term-log');
+  log.innerHTML='<span class="term-cursor"></span>';
+  sse=new EventSource('/api/jobs/logs',{withCredentials:true});
+  sse.onmessage=e=>appendLine(JSON.parse(e.data));
+  sse.onerror=()=>{sse.close();sse=null;sseTimer=setTimeout(connectSSE,3000)};
+}
+function killSSE(){clearTimeout(sseTimer);if(sse){sse.close();sse=null}}
+
+function appendLine(text){
+  const log=document.getElementById('term-log');
+  const empty=log.querySelector('.term-empty');
+  if(empty)empty.remove();
+  const cursor=log.querySelector('.term-cursor');
+  const el=document.createElement('span');
+  el.className='ll '+classify(text);
+  el.textContent=text+'\n';
+  if(cursor)log.insertBefore(el,cursor);
+  else log.appendChild(el);
+  log.scrollTop=log.scrollHeight;
+}
+
+function classify(t){
+  const l=t.toLowerCase();
+  if(l.includes('error')||l.includes('failed')||l.includes('fatal'))return'er';
+  if(l.includes('created')||l.includes('success'))return'ok';
+  if(l.includes('warning')||l.includes('warn')||l.includes('could not'))return'warn';
+  if(l.includes('checking')||l.includes('attempting')||l.includes('connecting')||l.includes('resuming'))return'inf';
+  return'def';
+}
+
+/* ── stat poller ── */
+function startPoller(){
+  clearInterval(pollInterval);
+  pollInterval=setInterval(async()=>{
+    try{
+      const j=await api('/api/jobs');
+      if(j.status!=='running'){clearInterval(pollInterval);renderConfig(j)}
+      else syncStats(j);
+    }catch{}
+  },10000);
+}
+
+/* ── init ── */
+async function init(){
+  show('s-loading');
+  try{
+    const auth=await api('/auth/status');
+    if(!auth.authenticated){renderLogin();return}
+    account=auth.account;
+    const job=await api('/api/jobs');
+    jobData=job;
+    if(job.status==='running')renderMonitor(job);
+    else renderConfig(job);
+  }catch{renderLogin()}
+}
+
+/* ── start form ── */
+document.getElementById('btn-start').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-start');
+  const inner=document.getElementById('btn-start-inner');
+  const err=document.getElementById('f-err');
+  err.classList.remove('on');
+
+  const slug=document.getElementById('f-slug').value.trim();
+  const region=document.getElementById('f-region').value.trim();
+  const image=document.getElementById('f-image').value.trim();
+  const desiredCount=document.getElementById('f-count').value;
+  const sshKeys=document.getElementById('f-keys').value.trim();
+  const webhookUrl=document.getElementById('f-hook').value.trim();
+  const namePrefix=document.getElementById('f-prefix').value.trim();
+
+  if(!slug||!region||!image||!desiredCount){
+    err.textContent='Droplet Slug, Region(s), Image, and Desired Count are required.';
+    err.classList.add('on');
+    return;
+  }
+
+  btn.disabled=true;
+  inner.innerHTML='<div class="spinner"></div>&nbsp;Starting…';
+
+  try{
+    await api('/api/jobs',{method:'POST',body:JSON.stringify({slug,region,image,desiredCount,sshKeys,webhookUrl,namePrefix})});
+    const job=await api('/api/jobs');
+    renderMonitor(job);
+  }catch(e){
+    err.textContent=e.message||'Failed to start. Please try again.';
+    err.classList.add('on');
+    btn.disabled=false;
+    inner.textContent='Start Monitoring';
+  }
+});
+
+/* ── stop ── */
+document.getElementById('btn-stop').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-stop');
+  btn.disabled=true;btn.textContent='Stopping…';
+  clearInterval(pollInterval);
+  try{
+    await api('/api/jobs',{method:'DELETE'});
+    const job=await api('/api/jobs');
+    renderConfig(job);
+  }catch{btn.disabled=false;btn.textContent='■ Stop Monitoring'}
+});
+
+init();
+})();
+</script>
+</body>
+</html>
